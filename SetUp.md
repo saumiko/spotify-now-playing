@@ -24,21 +24,31 @@ https://accounts.spotify.com/authorize?client_id={SPOTIFY_CLIENT_ID}&response_ty
 
 * Then run a [curl command](https://httpie.org/run) in the form of:
 ```sh
-curl -X POST -H "Content-Type: application/x-www-form-urlencoded" -H "Authorization: Basic {BASE64}" -d "grant_type=authorization_code&redirect_uri=http://localhost/callback/&code={CODE}" https://accounts.spotify.com/api/token
+curl -X POST -H "Content-Type: application/x-www-form-urlencoded" -H "Authorization: Basic BASE64_HERE" -d "grant_type=authorization_code&redirect_uri=http://localhost/callback/&code=CODE_HERE" https://accounts.spotify.com/api/token
 ```
 
 * Save the Refresh token
 
 ## Vercel
 
-* Register on [Vercel](https://vercel.com/)
+* Fork This Repo
 
-* Create project linked to your github repo
+* Register on [Vercel](https://vercel.com/) (Log in with GitHub)
 
-* Add System Variables:
+* Create project linked to *your* GitHub repo
+
+* Add Environment Variables:
     * `https://vercel.com/<YourName>/<ProjectName>/settings/environment-variables`
         * `SPOTIFY_REFRESH_TOKEN`
         * `SPOTIFY_CLIENT_ID`
         * `SPOTIFY_SECRET_ID`
 
 * Deploy!
+
+## Add to Your Readme
+
+```md
+### Spotify Playing 🎧
+
+[<img src="https://<YOUR VERCEL SERVER URL>/api/spotify-playing" alt="Spotify Now Playing" width="350" />](https://open.spotify.com/user/<YOUR SPOTIFY USER ID>)
+```
