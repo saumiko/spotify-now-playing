@@ -82,7 +82,9 @@ def catch_all(path):
         data = spotify_request(CURRENT_URL, token)
         svg = make_svg(data, token)
         response = Response(svg, mimetype="image/svg+xml")
-        response.headers["Cache-Control"] = "public, s-maxage=30"
+        response.headers["Cache-Control"] = "no-cache, max-age=0, must-revalidate"
+        response.headers["CDN-Cache-Control"] = "no-store"
+        response.headers["Vercel-CDN-Cache-Control"] = "no-store"
         return response
     except (requests.RequestException, KeyError, ValueError, IndexError) as exc:
         app.logger.exception("Spotify now-playing request failed")
