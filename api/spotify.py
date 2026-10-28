@@ -1,129 +1,93 @@
 import os
-import json
 import random
-import requests
-
 from base64 import b64encode
-from dotenv import load_dotenv, find_dotenv
-from flask import Flask, Response, jsonify, render_template
 
-load_dotenv(find_dotenv())
-
-# Spotify scopes:
-#   user-read-currently-playing
-#   user-read-recently-played
-SPOTIFY_CLIENT_ID = os.getenv("SPOTIFY_CLIENT_ID")
-SPOTIFY_SECRET_ID = os.getenv("SPOTIFY_SECRET_ID")
-SPOTIFY_REFRESH_TOKEN = os.getenv("SPOTIFY_REFRESH_TOKEN")
-
-REFRESH_TOKEN_URL = "https://accounts.spotify.com/api/token"
-NOW_PLAYING_URL = "https://api.spotify.com/v1/me/player/currently-playing"
-RECENTLY_PLAYING_URL = (
-    "https://api.spotify.com/v1/me/player/recently-played?limit=10"
-)
+import requests
+from flask import Flask, Response, render_template
+from markupsafe import escape
 
 app = Flask(__name__)
+TOKEN_URL = "https://accounts.spotify.com/api/token"
+CURRENT_URL = "https://api.spotify.com/v1/me/player/currently-playing"
+RECENT_URL = "https://api.spotify.com/v1/me/player/recently-played?limit=10"
 
 
-def getAuth():
-    return b64encode(f"{SPOTIFY_CLIENT_ID}:{SPOTIFY_SECRET_ID}".encode()).decode(
-        "ascii"
+def spotify_request(url, token):
+    response = requests.get(url, headers={"Authorization": f"Bearer {token}"}, timeout=10)
+    if response.status_code == 204:
+        return {}
+    response.raise_for_status()
+    return response.json()
+
+
+def refresh_token():
+    client_id = os.environ["SPOTIFY_CLIENT_ID"]
+    secret = os.environ["SPOTIFY_SECRET_ID"]
+    refresh = os.environ["SPOTIFY_REFRESH_TOKEN"]
+    auth = b64encode(f"{client_id}:{secret}".encode()).decode()
+    response = requests.post(
+        TOKEN_URL,
+        data={"grant_type": "refresh_token", "refresh_token": refresh},
+        headers={"Authorization": f"Basic {auth}"},
+        timeout=10,
     )
-
-
-def refreshToken():
-    data = {
-        "grant_type": "refresh_token",
-        "refresh_token": SPOTIFY_REFRESH_TOKEN,
-    }
-
-    headers = {"Authorization": "Basic {}".format(getAuth())}
-
-    response = requests.post(REFRESH_TOKEN_URL, data=data, headers=headers)
+    if not response.ok:
+        app.logger.error("Spotify token refresh failed: HTTP %s", response.status_code)
+    response.raise_for_status()
     return response.json()["access_token"]
 
 
-def recentlyPlayed():
-    token = refreshToken()
-    headers = {"Authorization": f"Bearer {token}"}
-    response = requests.get(RECENTLY_PLAYING_URL, headers=headers)
+def make_svg(data, token):
+    playing = data.get("item") if isinstance(data, dict) else None
+    active = bool(playing and data.get("is_playing", False))
+    if not playing:
+        recent = spotify_request(RECENT_URL, token)
+        tracks = [x.get("track") for x in recent.get("items", []) if x.get("track")]
+        playing = tracks[0] if tracks else None
 
-    if response.status_code == 204:
-        return {}
-    return response.json()
-
-
-def nowPlaying():
-    token = refreshToken()
-    headers = {"Authorization": f"Bearer {token}"}
-    response = requests.get(NOW_PLAYING_URL, headers=headers)
-
-    if response.status_code == 204:
-        return {}
-    return response.json()
-
-
-def barGen(barCount):
-    barCSS = ""
-    left = 1
-    for i in range(1, barCount + 1):
-        anim = random.randint(1000, 1350)
-        barCSS += (
-            ".bar:nth-child({})  {{ left: {}px; animation-duration: {}ms; }}".format(
-                i, left, anim
-            )
-        )
-        left += 4
-    return barCSS
-
-
-def loadImageB64(url):
-    resposne = requests.get(url)
-    return b64encode(resposne.content).decode("ascii")
-
-
-def makeSVG(data):
-    barCount = 84
-    contentBar = "".join(["<div class='bar'></div>" for i in range(barCount)])
-    barCSS = barGen(barCount)
-
-    if data == {} or data["item"] == "None":
-        contentBar = "" #Shows/Hides the EQ bar if no song is currently playing
-        currentStatus = "Was playing:"
-        recentPlays = recentlyPlayed()
-        recentPlaysLength = len(recentPlays["items"])
-        itemIndex = random.randint(0, recentPlaysLength - 1)
-        item = recentPlays["items"][itemIndex]["track"]
+    count = 84 if active else 0
+    bars = "".join("<div class='bar'></div>" for _ in range(count))
+    css = "".join(
+        f".bar:nth-child({i}) {{ left: {1 + (i - 1) * 4}px; animation-duration: {random.randint(1000, 1350)}ms; }}"
+        for i in range(1, count + 1)
+    )
+    if playing:
+        images = playing.get("album", {}).get("images", [])
+        image = ""
+        if images:
+            result = requests.get(images[min(1, len(images)-1)]["url"], timeout=10)
+            result.raise_for_status()
+            image = b64encode(result.content).decode()
+        artist = ", ".join(a.get("name", "") for a in playing.get("artists", []))
+        song = playing.get("name", "Unknown track")
     else:
-        item = data["item"]
-        currentStatus = "Listening to:"
-    image = loadImageB64(item["album"]["images"][1]["url"])
-    artistName = item["artists"][0]["name"].replace("&", "&amp;")
-    songName = item["name"].replace("&", "&amp;")
+        image, artist, song = "", "", "Nothing played recently"
 
-    dataDict = {
-        "contentBar": contentBar,
-        "barCSS": barCSS,
-        "artistName": artistName,
-        "songName": songName,
-        "image": image,
-        "status": currentStatus,
-    }
-
-    return render_template("spotify.html.j2", **dataDict)
+    return render_template(
+        "spotify.html.j2",
+        contentBar=bars,
+        barCSS=css,
+        artistName=str(escape(artist)),
+        songName=str(escape(song)),
+        image=image,
+        status="Listening to:" if active else "Was playing:",
+    )
 
 
 @app.route("/", defaults={"path": ""})
 @app.route("/<path:path>")
 def catch_all(path):
-    data = nowPlaying()
-    svg = makeSVG(data)
-
-    resp = Response(svg, mimetype="image/svg+xml")
-    resp.headers["Cache-Control"] = "s-maxage=1"
-
-    return resp
+    try:
+        token = refresh_token()
+        data = spotify_request(CURRENT_URL, token)
+        svg = make_svg(data, token)
+        response = Response(svg, mimetype="image/svg+xml")
+        response.headers["Cache-Control"] = "public, s-maxage=30"
+        return response
+    except (requests.RequestException, KeyError, ValueError, IndexError) as exc:
+        app.logger.exception("Spotify now-playing request failed")
+        return Response("Spotify integration temporarily unavailable", status=502, mimetype="text/plain")
 
 
 if __name__ == "__main__":
-    app.run(debug=True)
+    app.run()
