@@ -1,111 +1,28 @@
-<svg width="480" height="133" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink">
-    <foreignObject width="480" height="133">
-        <div xmlns="http://www.w3.org/1999/xhtml" class="container">
-            <style>
-                .main {
-                    /*margin-top: 40px;*/
-                    display: flex;
-                }
-
-                .currentStatus {
-                    float: left;
-                    font-size: 24px;
-                    position: static;
-                    margin-top: -5px;
-                    margin-left: 10px;
-                }
-                
-                .container {
-                    border-radius: 5px;
-                    padding: 10px 10px 10px 0px;
-                }
-
-                .art {
-                    width: 27%;
-                    float: left;
-                    margin-left: -5px;
-                }
-
-                .content {
-                    width: 71%;
-                }
-
-                .song {
-                    color: #666;
-                    overflow:hidden;
-                    margin-top: 3px;
-                    font-size: 24px;
-                    text-align: center;
-                    white-space:nowrap;
-                    text-overflow:ellipsis;
-                }
-
-                .artist {
-                    color: #b3b3b3;
-                    font-size: 20px;
-                    margin-top: 4px;
-                    text-align: center;
-                    margin-bottom: 5px;
-                }
-
-                .cover {
-                    width: 100px;
-                    height: 100px;
-                    border-radius: 5px;
-                }
-
-                #bars {
-                    width: 40px;
-                    height: 30px;
-                    bottom: 23px;
-                    position: absolute;
-                    margin: -20px 0 0 0px;
-                }
-
-                .bar {
-                    width: 3px;
-                    bottom: 1px;
-                    height: 3px;
-                    position: absolute;
-                    background: #1DB954cc;
-                    animation: sound 0ms -800ms linear infinite alternate;
-                }
-                
-                div {
-                    font-family: -apple-system, BlinkMacSystemFont, Segoe UI, Helvetica, Arial, sans-serif, Apple Color Emoji, Segoe UI Emoji;
-                }
-                
-                @keyframes sound {
-                    0% {
-                        height: 3px;
-                        opacity: .35;
-                    }
-
-                    100% {
-                        height: 15px;
-                        opacity: 0.95;
-                    }
-                }
-
-                {{barCSS|safe}}
-            </style>
-
-            <!-- <div class="currentStatus">{{status}}</div> -->
-
-            <div class="main">
-                <a class="art" href="{}" target="_blank">
-                    <center>
-                        <img src="data:image/png;base64, {{image}}" class="cover" />
-                    </center>
-                </a>
-
-                <div class="content">
-                    <div class="song">{{songName}}</div>
-                    <div class="artist">{{artistName}}</div>
-                    <div id="bars">{{contentBar|safe}}</div>
-                </div>
-            </div>
-
-        </div>
-    </foreignObject>
+<svg width="480" height="133" viewBox="0 0 480 133" xmlns="http://www.w3.org/2000/svg">
+  <style>
+    :root { color-scheme: light dark; }
+    .panel { fill: #f6f8fa; stroke: #d0d7de; }
+    .title { fill: #1f2328; }
+    .secondary { fill: #59636e; }
+    @media (prefers-color-scheme: dark) {
+      .panel { fill: #161b22; stroke: #30363d; }
+      .title { fill: #f0f6fc; }
+      .secondary { fill: #9198a1; }
+    }
+    text { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif; }
+    .bar { fill: #1db954; animation: pulse 900ms ease-in-out infinite alternate; transform-box: fill-box; transform-origin: center bottom; }
+    @keyframes pulse { from { transform: scaleY(.3); opacity: .5; } to { transform: scaleY(1); opacity: 1; } }
+  </style>
+  <rect class="panel" x="1" y="1" width="478" height="131" rx="12"/>
+  {% if image %}
+  <image x="14" y="16" width="100" height="100" href="data:image/png;base64,{{image}}" />
+  {% endif %}
+  <text class="secondary" x="130" y="34" font-size="12">{{status}}</text>
+  <text class="title" x="130" y="65" font-size="19" font-weight="650">{{songName}}</text>
+  <text class="secondary" x="130" y="87" font-size="14">{{artistName}}</text>
+  {% if status == "Listening to:" %}
+  {% for i in range(8) %}
+  <rect class="bar" x="{{130 + i * 7}}" y="100" width="4" height="{{8 + (i % 4) * 3}}" rx="2" style="animation-delay: {{i * -110}}ms"/>
+  {% endfor %}
+  {% endif %}
 </svg>
