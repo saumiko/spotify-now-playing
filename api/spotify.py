@@ -3,7 +3,7 @@ import random
 from base64 import b64encode
 
 import requests
-from flask import Flask, Response, render_template
+from flask import Flask, Response, redirect, render_template, request
 from markupsafe import escape
 
 app = Flask(__name__)
@@ -74,9 +74,36 @@ def make_svg(data, token):
     )
 
 
+@app.route("/track")
+def track_redirect():
+    try:
+        token = refresh_token()
+        data = spotify_request(CURRENT_URL, token)
+        track = data.get("item") if isinstance(data, dict) else None
+        if not track or track.get("type") != "track":
+            recent = spotify_request(RECENT_URL, token)
+            track = next(
+                (entry.get("track") for entry in recent.get("items", [])
+                 if entry.get("track", {}).get("type") == "track"),
+                None,
+            )
+        url = (track or {}).get("external_urls", {}).get("spotify")
+        if not url or not url.startswith("https://open.spotify.com/track/"):
+            return redirect("https://open.spotify.com/user/amohaimen", code=302)
+        response = redirect(url, code=302)
+        response.headers["Cache-Control"] = "no-store, max-age=0"
+        response.headers["Vercel-CDN-Cache-Control"] = "no-store"
+        return response
+    except (requests.RequestException, KeyError, ValueError, IndexError):
+        app.logger.exception("Spotify track redirect failed")
+        return redirect("https://open.spotify.com/user/amohaimen", code=302)
+
+
 @app.route("/", defaults={"path": ""})
 @app.route("/<path:path>")
 def catch_all(path):
+    if request.args.get("redirect") == "track":
+        return track_redirect()
     try:
         token = refresh_token()
         data = spotify_request(CURRENT_URL, token)
