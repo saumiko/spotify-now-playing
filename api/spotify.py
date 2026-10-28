@@ -1,6 +1,7 @@
 import os
-import random
 from base64 import b64encode
+from datetime import datetime, timezone
+from unicodedata import combining, east_asian_width
 
 import requests
 from flask import Flask, Response, redirect, render_template, request
@@ -37,40 +38,70 @@ def refresh_token():
     return response.json()["access_token"]
 
 
-def make_svg(data, token):
-    playing = data.get("item") if isinstance(data, dict) else None
-    active = bool(playing and data.get("is_playing", False))
-    if not playing:
-        recent = spotify_request(RECENT_URL, token)
-        tracks = [x.get("track") for x in recent.get("items", []) if x.get("track")]
-        playing = tracks[0] if tracks else None
+def truncate_label(value, max_units):
+    """Fit text to the SVG's available width, including wide Unicode glyphs."""
+    value = " ".join(str(value or "").split())
+    units = 0
+    result = []
+    for char in value:
+        width = 0 if combining(char) else (2 if east_asian_width(char) in ("F", "W") else 1)
+        if units + width > max_units:
+            return "".join(result).rstrip() + "…"
+        result.append(char)
+        units += width
+    return value
 
-    count = 84 if active else 0
-    bars = "".join("<div class='bar'></div>" for _ in range(count))
-    css = "".join(
-        f".bar:nth-child({i}) {{ left: {1 + (i - 1) * 4}px; animation-duration: {random.randint(1000, 1350)}ms; }}"
-        for i in range(1, count + 1)
-    )
-    if playing:
-        images = playing.get("album", {}).get("images", [])
-        image = ""
-        if images:
-            result = requests.get(images[min(1, len(images)-1)]["url"], timeout=10)
-            result.raise_for_status()
-            image = b64encode(result.content).decode()
-        artist = ", ".join(a.get("name", "") for a in playing.get("artists", []))
-        song = playing.get("name", "Unknown track")
+
+def make_svg(data, token):
+    track = data.get("item") if isinstance(data, dict) else None
+    active = bool(track and data.get("is_playing", False))
+    played_at = None
+    if not track:
+        recent = spotify_request(RECENT_URL, token)
+        entry = next((x for x in recent.get("items", []) if x.get("track")), None)
+        track = entry.get("track") if entry else None
+        played_at = entry.get("played_at") if entry else None
+
+    if active:
+        status = "NOW PLAYING"
+    elif played_at:
+        try:
+            dt = datetime.fromisoformat(played_at.replace("Z", "+00:00"))
+            status = "LAST PLAYED · " + dt.astimezone(timezone.utc).strftime("%d %b, %H:%M UTC")
+        except ValueError:
+            status = "LAST PLAYED"
     else:
-        image, artist, song = "", "", "Nothing played recently"
+        status = "LAST PLAYED" if track else "NOTHING PLAYED YET"
+
+    image = ""
+    if track:
+        images = track.get("album", {}).get("images", [])
+        if images:
+            try:
+                result = requests.get(images[min(1, len(images) - 1)]["url"], timeout=6)
+                result.raise_for_status()
+                if result.headers.get("Content-Type", "").startswith("image/") and len(result.content) < 2_000_000:
+                    image = b64encode(result.content).decode()
+            except requests.RequestException:
+                app.logger.warning("Spotify artwork unavailable; using placeholder")
+        song = truncate_label(track.get("name", "Unknown track"), 29)
+        artist = truncate_label(", ".join(a.get("name", "") for a in track.get("artists", [])), 42)
+        album = track.get("album", {})
+        album_name = album.get("name", "")
+        year = (album.get("release_date") or "")[:4]
+        metadata = " · ".join(part for part in (album_name, year) if part)
+        metadata = truncate_label(metadata, 45)
+    else:
+        song, artist, metadata = "Nothing played recently", "", ""
 
     return render_template(
         "spotify.html.j2",
-        contentBar=bars,
-        barCSS=css,
-        artistName=str(escape(artist)),
-        songName=str(escape(song)),
+        artistName=artist,
+        songName=song,
+        albumMeta=metadata,
         image=image,
-        status="Listening to:" if active else "Was playing:",
+        status=status,
+        active=active,
     )
 
 
