@@ -2,6 +2,10 @@
   "version": 2,
   "rewrites": [
     {
+      "source": "/track",
+      "destination": "/api/spotify?redirect=track"
+    },
+    {
       "source": "/(.*)",
       "destination": "/api/spotify"
     }
