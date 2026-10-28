@@ -1,28 +1,32 @@
-<svg width="480" height="133" viewBox="0 0 480 133" xmlns="http://www.w3.org/2000/svg">
+<svg width="480" height="160" viewBox="0 0 480 160" xmlns="http://www.w3.org/2000/svg">
   <style>
     :root { color-scheme: light dark; }
     .panel { fill: #f6f8fa; stroke: #d0d7de; }
-    .title { fill: #1f2328; }
+    .primary { fill: #1f2328; }
     .secondary { fill: #59636e; }
     @media (prefers-color-scheme: dark) {
       .panel { fill: #161b22; stroke: #30363d; }
-      .title { fill: #f0f6fc; }
+      .primary { fill: #f0f6fc; }
       .secondary { fill: #9198a1; }
     }
     text { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif; }
     .bar { fill: #1db954; animation: pulse 900ms ease-in-out infinite alternate; transform-box: fill-box; transform-origin: center bottom; }
     @keyframes pulse { from { transform: scaleY(.3); opacity: .5; } to { transform: scaleY(1); opacity: 1; } }
   </style>
-  <rect class="panel" x="1" y="1" width="478" height="131" rx="12"/>
+  <rect class="panel" x="1" y="1" width="478" height="158" rx="12"/>
   {% if image %}
-  <image x="14" y="16" width="100" height="100" href="data:image/png;base64,{{image}}" />
+  <image x="16" y="16" width="128" height="128" href="data:image/png;base64,{{image}}" />
   {% endif %}
-  <text class="secondary" x="130" y="34" font-size="12">{{status}}</text>
-  <text class="title" x="130" y="65" font-size="19" font-weight="650">{{songName}}</text>
-  <text class="secondary" x="130" y="87" font-size="14">{{artistName}}</text>
+  <text class="secondary" x="162" y="36" font-size="13">{{status}}</text>
+  <svg x="162" y="49" width="300" height="28" viewBox="0 0 300 28" overflow="hidden">
+    <text class="primary" x="0" y="21" font-size="19" font-weight="650">{{songName}}</text>
+  </svg>
+  <svg x="162" y="81" width="300" height="24" viewBox="0 0 300 24" overflow="hidden">
+    <text class="secondary" x="0" y="17" font-size="14">{{artistName}}</text>
+  </svg>
   {% if status == "Listening to:" %}
-  {% for i in range(8) %}
-  <rect class="bar" x="{{130 + i * 7}}" y="100" width="4" height="{{8 + (i % 4) * 3}}" rx="2" style="animation-delay: {{i * -110}}ms"/>
+  {% for i in range(10) %}
+  <rect class="bar" x="{{162 + i * 8}}" y="119" width="5" height="{{10 + (i % 4) * 4}}" rx="2" style="animation-delay: {{i * -110}}ms"/>
   {% endfor %}
   {% endif %}
 </svg>
