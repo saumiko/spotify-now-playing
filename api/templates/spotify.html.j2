@@ -4,29 +4,38 @@
     .panel { fill: #f6f8fa; stroke: #d0d7de; }
     .primary { fill: #1f2328; }
     .secondary { fill: #59636e; }
+    .soft { fill: #eaeef2; }
+    .spotify { fill: #1db954; }
     @media (prefers-color-scheme: dark) {
       .panel { fill: #161b22; stroke: #30363d; }
       .primary { fill: #f0f6fc; }
       .secondary { fill: #9198a1; }
+      .soft { fill: #30363d; }
     }
     text { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif; }
     .bar { fill: #1db954; animation: pulse 900ms ease-in-out infinite alternate; transform-box: fill-box; transform-origin: center bottom; }
     @keyframes pulse { from { transform: scaleY(.3); opacity: .5; } to { transform: scaleY(1); opacity: 1; } }
   </style>
   <rect class="panel" x="1" y="1" width="478" height="158" rx="12"/>
+  <rect class="soft" x="16" y="16" width="128" height="128" rx="9"/>
   {% if image %}
-  <image x="16" y="16" width="128" height="128" href="data:image/png;base64,{{image}}" />
+  <image x="16" y="16" width="128" height="128" href="data:image/png;base64,{{image}}"/>
+  {% else %}
+  <circle cx="80" cy="80" r="27" fill="#1db954" opacity=".14"/>
+  <path d="M91 54v38a13 13 0 1 1-6-11V63l23-5v-8z" fill="#1db954"/>
   {% endif %}
-  <text class="secondary" x="162" y="36" font-size="13">{{status}}</text>
-  <svg x="162" y="49" width="300" height="28" viewBox="0 0 300 28" overflow="hidden">
-    <text class="primary" x="0" y="21" font-size="19" font-weight="650">{{songName}}</text>
-  </svg>
-  <svg x="162" y="81" width="300" height="24" viewBox="0 0 300 24" overflow="hidden">
-    <text class="secondary" x="0" y="17" font-size="14">{{artistName}}</text>
-  </svg>
-  {% if status == "Listening to:" %}
+  <circle cx="173" cy="27" r="11" class="spotify"/>
+  <path d="M166 24c5-2 12-1 16 2M167 28c4-1 10-1 14 2M168 32c3-1 8 0 11 2" fill="none" stroke="#fff" stroke-width="1.5" stroke-linecap="round"/>
+  <circle cx="194" cy="27" r="4" fill="{{ '#1db954' if active else '#8b949e' }}"/>
+  <text class="secondary" x="205" y="31" font-size="10" font-weight="600">{{status}}</text>
+  <text class="primary" x="162" y="62" font-size="19" font-weight="650">{{songName}}</text>
+  <text class="secondary" x="162" y="85" font-size="14">{{artistName}}</text>
+  <text class="secondary" x="162" y="106" font-size="11">{{albumMeta}}</text>
+  {% if active %}
   {% for i in range(10) %}
-  <rect class="bar" x="{{162 + i * 8}}" y="119" width="5" height="{{10 + (i % 4) * 4}}" rx="2" style="animation-delay: {{i * -110}}ms"/>
+  <rect class="bar" x="{{162 + i * 8}}" y="125" width="5" height="{{9 + (i % 4) * 4}}" rx="2" style="animation-delay: {{i * -110}}ms"/>
   {% endfor %}
+  {% else %}
+  <text class="secondary" x="162" y="137" font-size="11">Playback paused or offline</text>
   {% endif %}
 </svg>
